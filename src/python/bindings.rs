@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::PyList;
-use numpy::{PyArray2, PyReadonlyArray2};
+use numpy::{PyArray2, PyArrayMethods, PyUntypedArrayMethods};
 
 use crate::geometry::Point2D;
 use crate::optimizer::{FitConfig, fit_curve};
@@ -55,7 +55,7 @@ impl PyFitResult {
 #[pyfunction]
 #[pyo3(signature = (points, min_segment_len=30, max_segment_len=200, max_error=2.0))]
 pub fn fit_curve_py(
-    points: &PyAny,
+    points: &Bound<'_, PyAny>,
     min_segment_len: usize,
     max_segment_len: usize,
     max_error: f64,
@@ -77,20 +77,20 @@ pub fn fit_curve_py(
 }
 
 /// 解析Python输入的点（支持列表和numpy数组）
-fn parse_points(obj: &PyAny) -> PyResult<Vec<Point2D>> {
+fn parse_points(obj: &Bound<'_, PyAny>) -> PyResult<Vec<Point2D>> {
     // 尝试作为numpy数组
-    if let Ok(arr) = obj.downcast::<PyArray2<f64>>() {
+    if let Ok(arr) = obj.cast::<PyArray2<f64>>() {
         let readonly = arr.readonly();
         let shape = readonly.shape();
         
-        if shape[1] != 2 {
+        if shape.1 != 2 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "Numpy array must have shape (N, 2)",
             ));
         }
 
-        let mut points = Vec::with_capacity(shape[0]);
-        for i in 0..shape[0] {
+        let mut points = Vec::with_capacity(shape.0);
+        for i in 0..shape.0 {
             points.push(Point2D::new(
                 *readonly.get([i, 0]).unwrap(),
                 *readonly.get([i, 1]).unwrap(),
@@ -100,7 +100,7 @@ fn parse_points(obj: &PyAny) -> PyResult<Vec<Point2D>> {
     }
 
     // 尝试作为列表
-    if let Ok(list) = obj.downcast::<PyList>() {
+    if let Ok(list) = obj.cast::<PyList>() {
         let mut points = Vec::with_capacity(list.len());
         for item in list.iter() {
             if let Ok(tuple) = item.extract::<(f64, f64)>() {

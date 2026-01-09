@@ -12,7 +12,7 @@ pub use optimizer::{FitConfig, FitResult, DPOptimizer, fit_curve};
 use pyo3::prelude::*;
 
 #[pymodule]
-fn bezier_dp_fit(_py: Python, m: &PyModule) -> PyResult<()> {
+fn bezier_dp_fit(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(python::bindings::fit_curve_py, m)?)?;
     m.add_class::<python::bindings::PyFitResult>()?;
     Ok(())
