@@ -104,8 +104,9 @@ impl DPOptimizer {
         let mut parent = vec![0; n];
         dp[0] = 0.0;
 
+        let max_len = config.max_segment_len.max(1);
         for i in config.min_segment_len..n {
-            let start = i.saturating_sub(config.max_segment_len);
+            let start = i.saturating_sub(max_len - 1);
             let end = if config.min_segment_len > 0 {
                 i.saturating_sub(config.min_segment_len - 1)
             } else {
@@ -162,8 +163,9 @@ impl DPOptimizer {
         let mut intervals = Vec::new();
 
         // 生成所有需要计算的区间
+        let max_len = config.max_segment_len.max(1);
         for i in config.min_segment_len..n {
-            let start = i.saturating_sub(config.max_segment_len);
+            let start = i.saturating_sub(max_len - 1);
             let end = if config.min_segment_len > 0 {
                 i.saturating_sub(config.min_segment_len - 1)
             } else {

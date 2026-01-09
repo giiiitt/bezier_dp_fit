@@ -27,9 +27,13 @@ impl QuadraticBezier {
 
     /// 采样曲线上的点
     pub fn sample(&self, num_points: usize) -> Vec<Point2D> {
+        if num_points == 0 {
+            return Vec::new();
+        }
+        let denom = (num_points - 1).max(1) as f64;
         (0..num_points)
             .map(|i| {
-                let t = i as f64 / (num_points - 1).max(1) as f64;
+                let t = i as f64 / denom;
                 self.evaluate(t)
             })
             .collect()
@@ -60,7 +64,7 @@ impl QuadraticBezier {
                 let p = self.evaluate(t);
                 p.distance_to(point)
             })
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|a, b| a.total_cmp(b))
             .unwrap_or(f64::INFINITY)
     }
 }

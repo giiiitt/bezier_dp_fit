@@ -82,15 +82,23 @@ fn parse_points(obj: &Bound<'_, PyAny>) -> PyResult<Vec<Point2D>> {
     if let Ok(arr) = obj.cast::<PyArray2<f64>>() {
         let readonly = arr.readonly();
         let shape = readonly.shape();
-        
-        if shape.1 != 2 {
+        let (rows, cols) = match shape {
+            [rows, cols] => (*rows, *cols),
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "Numpy array must have shape (N, 2)",
+                ));
+            }
+        };
+
+        if cols != 2 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "Numpy array must have shape (N, 2)",
             ));
         }
 
-        let mut points = Vec::with_capacity(shape.0);
-        for i in 0..shape.0 {
+        let mut points = Vec::with_capacity(rows);
+        for i in 0..rows {
             points.push(Point2D::new(
                 *readonly.get([i, 0]).unwrap(),
                 *readonly.get([i, 1]).unwrap(),
