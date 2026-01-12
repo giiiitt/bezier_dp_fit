@@ -1,4 +1,4 @@
-use crate::fitting::{BezierFitter, FitError};
+﻿use crate::fitting::{BezierFitter, FitError};
 use crate::geometry::{Point2D, QuadraticBezier};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -14,7 +14,7 @@ pub struct FitResult {
 }
 
 impl FitResult {
-    /// 转换为 SVG 路径字符串
+    /// 杞崲涓?SVG 璺緞瀛楃涓?
     pub fn to_svg_path(&self) -> String {
         if self.curves.is_empty() {
             return String::new();
@@ -30,12 +30,12 @@ impl FitResult {
         path
     }
 
-    /// 获取所有控制点
+    /// 鑾峰彇鎵€鏈夋帶鍒剁偣
     pub fn control_points(&self) -> Vec<[(f64, f64); 3]> {
         self.curves.iter().map(|c| c.control_points()).collect()
     }
 
-    /// 采样成密集点集
+    /// 閲囨牱鎴愬瘑闆嗙偣闆?
     pub fn sample_points(&self, points_per_segment: usize) -> Vec<(f64, f64)> {
         self.curves
             .iter()
@@ -47,7 +47,7 @@ impl FitResult {
             .collect()
     }
 
-    /// 转换为 JSON
+    /// 杞崲涓?JSON
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
@@ -71,11 +71,11 @@ impl serde::Serialize for FitResult {
 pub struct DPOptimizer;
 
 impl DPOptimizer {
-    /// 主优化函数
+    /// 涓讳紭鍖栧嚱鏁?
     pub fn optimize(points: &[Point2D], config: &FitConfig) -> FitResult {
         let n = points.len();
 
-        // 边界检查
+        // 杈圭晫妫€鏌?
         if n == 0 {
             return FitResult {
                 curves: vec![],
@@ -86,7 +86,7 @@ impl DPOptimizer {
         }
 
         if n <= config.min_segment_len {
-            // 点太少或刚好，直接拟合一段
+            // 鐐瑰お灏戞垨鍒氬ソ锛岀洿鎺ユ嫙鍚堜竴娈?
             let fit = BezierFitter::fit_segment(points);
             return FitResult {
                 curves: vec![fit.bezier],
@@ -96,13 +96,15 @@ impl DPOptimizer {
             };
         }
 
-        // 第一步：并行预计算所有可能区间的误差
+        // 绗竴姝ワ細骞惰棰勮绠楁墍鏈夊彲鑳藉尯闂寸殑璇樊
         let error_cache = Self::compute_error_cache(points, config);
 
-        // 第二步：DP
-        let mut dp = vec![f64::INFINITY; n];
+        // 绗簩姝ワ細DP
+        let mut seg_dp = vec![usize::MAX; n];
+        let mut err_dp = vec![f64::INFINITY; n];
         let mut parent = vec![0; n];
-        dp[0] = 0.0;
+        seg_dp[0] = 0;
+        err_dp[0] = 0.0;
 
         let max_len = config.max_segment_len.max(1);
         for i in config.min_segment_len..n {
@@ -110,35 +112,40 @@ impl DPOptimizer {
             let end = if config.min_segment_len > 0 {
                 i.saturating_sub(config.min_segment_len - 1)
             } else {
-                i  // 边界保护
+                i  // 杈圭晫淇濇姢
             };
 
             for j in start..=end {
                 if let Some(fit) = error_cache.get(&(j, i)) {
                     if fit.error > config.max_error {
-                        continue; // 剪枝
+                        continue; // 鍓灊
                     }
 
-                    let cost = dp[j] + fit.error;
-                    if cost < dp[i] {
-                        dp[i] = cost;
+                    if seg_dp[j] == usize::MAX {
+                        continue;
+                    }
+                    let cand_seg = seg_dp[j] + 1;
+                    let cand_err = err_dp[j] + fit.error;
+                    if cand_seg < seg_dp[i] || (cand_seg == seg_dp[i] && cand_err < err_dp[i]) {
+                        seg_dp[i] = cand_seg;
+                        err_dp[i] = cand_err;
                         parent[i] = j;
                     }
                 }
             }
         }
 
-        // 第三步：回溯路径
-        let total_error = dp[n - 1];
+        // 绗笁姝ワ細鍥炴函璺緞
+        let total_error = err_dp[n - 1];
         
-        // 检查是否找到有效路径
+        // 妫€鏌ユ槸鍚︽壘鍒版湁鏁堣矾寰?
         if total_error.is_infinite() {
-            // 没有找到符合误差要求的路径，使用宽松的误差重试
+            // 娌℃湁鎵惧埌绗﹀悎璇樊瑕佹眰鐨勮矾寰勶紝浣跨敤瀹芥澗鐨勮宸噸璇?
             eprintln!("Warning: No valid path found with max_error={:.2}, using fallback", config.max_error);
             let fallback_config = FitConfig::new_clamped(
                 config.min_segment_len,
                 config.max_segment_len,
-                f64::INFINITY  // 不限制误差
+                f64::INFINITY  // 涓嶉檺鍒惰宸?
             );
             return Self::optimize(points, &fallback_config);
         }
@@ -154,7 +161,7 @@ impl DPOptimizer {
         }
     }
 
-    /// 并行计算所有区间的误差
+    /// 骞惰璁＄畻鎵€鏈夊尯闂寸殑璇樊
     fn compute_error_cache(
         points: &[Point2D],
         config: &FitConfig,
@@ -162,7 +169,7 @@ impl DPOptimizer {
         let n = points.len();
         let mut intervals = Vec::new();
 
-        // 生成所有需要计算的区间
+        // 鐢熸垚鎵€鏈夐渶瑕佽绠楃殑鍖洪棿
         let max_len = config.max_segment_len.max(1);
         for i in config.min_segment_len..n {
             let start = i.saturating_sub(max_len - 1);
@@ -176,12 +183,12 @@ impl DPOptimizer {
             }
         }
 
-        // 并行计算
+        // 骞惰璁＄畻
         let results: Vec<_> = intervals
             .par_iter()
             .map(|&(start, end)| {
                 let segment = &points[start..=end];
-                let fit = BezierFitter::fit_segment(segment);
+                let fit = BezierFitter::fit_segment_with_limit(segment, config.max_error);
                 ((start, end), fit)
             })
             .collect();
@@ -189,7 +196,7 @@ impl DPOptimizer {
         results.into_iter().collect()
     }
 
-    /// 回溯构建曲线序列
+    /// 鍥炴函鏋勫缓鏇茬嚎搴忓垪
     fn reconstruct_curves(
         mut end: usize,
         parent: &[usize],
@@ -202,7 +209,7 @@ impl DPOptimizer {
             if let Some(fit) = cache.get(&(start, end)) {
                 segments.push(fit.bezier);
             } else {
-                // 理论上不应该发生，但为了健壮性
+                // 鐞嗚涓婁笉搴旇鍙戠敓锛屼絾涓轰簡鍋ュ．鎬?
                 eprintln!("Warning: segment ({}, {}) not found in cache", start, end);
             }
             end = start;
@@ -213,7 +220,8 @@ impl DPOptimizer {
     }
 }
 
-/// 便捷函数
+/// 渚挎嵎鍑芥暟
 pub fn fit_curve(points: &[Point2D], config: &FitConfig) -> FitResult {
     DPOptimizer::optimize(points, config)
 }
+
