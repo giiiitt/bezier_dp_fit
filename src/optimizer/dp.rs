@@ -97,7 +97,10 @@ impl DPOptimizer {
         }
 
         // 绗竴姝ワ細骞惰棰勮绠楁墍鏈夊彲鑳藉尯闂寸殑璇樊
-        let error_cache = Self::compute_error_cache(points, config);
+        let error_cache = match try_compute_error_cache_cuda(points, config) {
+            Ok(cache) => cache,
+            Err(_) => Self::compute_error_cache(points, config),
+        };
 
         // 绗簩姝ワ細DP
         let mut seg_dp = vec![usize::MAX; n];
@@ -223,5 +226,21 @@ impl DPOptimizer {
 /// 渚挎嵎鍑芥暟
 pub fn fit_curve(points: &[Point2D], config: &FitConfig) -> FitResult {
     DPOptimizer::optimize(points, config)
+}
+
+#[cfg(feature = "cuda")]
+fn try_compute_error_cache_cuda(
+    points: &[Point2D],
+    config: &FitConfig,
+) -> Result<HashMap<(usize, usize), FitError>, String> {
+    super::cuda::compute_error_cache_cuda(points, config)
+}
+
+#[cfg(not(feature = "cuda"))]
+fn try_compute_error_cache_cuda(
+    _points: &[Point2D],
+    _config: &FitConfig,
+) -> Result<HashMap<(usize, usize), FitError>, String> {
+    Err("cuda feature disabled".to_string())
 }
 

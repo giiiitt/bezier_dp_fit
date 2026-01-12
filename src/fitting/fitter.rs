@@ -9,7 +9,7 @@ pub struct FitError {
 pub struct BezierFitter;
 
 impl BezierFitter {
-    fn compute_bezier(points: &[Point2D]) -> QuadraticBezier {
+    pub(crate) fn compute_bezier(points: &[Point2D]) -> QuadraticBezier {
         let n = points.len();
 
         if n == 0 {

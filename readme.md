@@ -56,6 +56,13 @@ cargo clean
 maturin develop --release
 ```
 
+#### CUDA (optional)
+If you want the GPU error-cache backend, build with the `cuda` feature:
+```bash
+maturin develop --release --features cuda
+```
+When CUDA is not available, the code automatically falls back to the CPU path.
+
 ### 方式2: 构建wheel包
 
 ```bash
