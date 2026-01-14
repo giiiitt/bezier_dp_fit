@@ -275,7 +275,7 @@ bezier-dp-fit/
 │   ├── optimizer/      # DP优化器
 │   └── python/         # Python绑定
 ├── examples/
-│   └── example.py      # 使用示例
+│   └── example_py.py   # 使用示例
 └── README.md
 ```
 
